@@ -8,9 +8,12 @@ describe("Change Classifier", () => {
       and import contacts in bulk.
     `;
 
-    const profile = classifyChange(change);
+    const result = classifyChange(change);
 
-    expect(profile?.featureType).toBe("data-import");
+    expect(result.profiles).toHaveLength(1);
+    expect(result.profiles[0]?.featureType).toBe(
+      "data-import",
+    );
   });
 
   it("classifies a refund endpoint as payment", () => {
@@ -19,9 +22,12 @@ describe("Change Classifier", () => {
       Users can request a refund for a transaction.
     `;
 
-    const profile = classifyChange(change);
+    const result = classifyChange(change);
 
-    expect(profile?.featureType).toBe("payment");
+    expect(result.profiles).toHaveLength(1);
+    expect(result.profiles[0]?.featureType).toBe(
+      "payment",
+    );
   });
 
   it("classifies login functionality as authentication", () => {
@@ -29,18 +35,90 @@ describe("Change Classifier", () => {
       The application now supports login using OAuth.
     `;
 
-    const profile = classifyChange(change);
+    const result = classifyChange(change);
 
-    expect(profile?.featureType).toBe("authentication");
+    expect(result.profiles).toHaveLength(1);
+    expect(result.profiles[0]?.featureType).toBe(
+      "authentication",
+    );
   });
 
-  it("returns undefined for an unknown change", () => {
+  it("returns no profiles for an unknown change", () => {
     const change = `
       The company logo has been updated.
     `;
 
-    const profile = classifyChange(change);
+    const result = classifyChange(change);
 
-    expect(profile).toBeUndefined();
+    expect(result.profiles).toHaveLength(0);
+    expect(result.categories).toHaveLength(0);
   });
+
+  it("detects multiple risk profiles", () => {
+    const change = `
+      Add OAuth authentication to the payment refund flow.
+    `;
+
+    const result = classifyChange(change);
+
+    const featureTypes = result.profiles.map(
+      (profile) => profile.featureType,
+    );
+
+    expect(featureTypes).toContain("payment");
+    expect(featureTypes).toContain("authentication");
+  });
+
+  it("combines risk categories from multiple profiles", () => {
+    const change = `
+      Add OAuth authentication to the payment refund flow.
+    `;
+
+    const result = classifyChange(change);
+
+    expect(result.categories).toContain("FINANCIAL");
+    expect(result.categories).toContain("SECURITY");
+    expect(result.categories).toContain("AUTHORIZATION");
+  });
+
+    it("assigns a high risk score to payment changes", () => {
+    const change = `
+      Introduce a new payment refund endpoint.
+    `;
+
+    const result = classifyChange(change);
+
+    expect(result.riskScore).toBe(85);
+  });
+
+  it("assigns a high risk score to authentication changes", () => {
+    const change = `
+      Add OAuth login to the application.
+    `;
+
+    const result = classifyChange(change);
+
+    expect(result.riskScore).toBe(80);
+  });
+
+  it("uses the highest risk profile for multiple profiles", () => {
+    const change = `
+      Add OAuth authentication to the payment refund flow.
+    `;
+
+    const result = classifyChange(change);
+
+    expect(result.riskScore).toBe(85);
+  });
+
+  it("assigns zero risk when no profile matches", () => {
+    const change = `
+      Update the company logo
+    `;
+
+    const result = classifyChange(change);
+
+    expect(result.riskScore).toBe(0);
+  });
+
 });
