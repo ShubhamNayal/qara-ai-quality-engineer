@@ -126,3 +126,4 @@ const exitCode = getExitCode(
 process.exit(exitCode);
 // QARA CI test: add a payment refund transaction endpoint
 // This simulates a financial write operation.
+// QARA comment-only test
