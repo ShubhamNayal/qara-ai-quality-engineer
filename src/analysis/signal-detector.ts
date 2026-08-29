@@ -3,14 +3,29 @@ import {
   type RiskSignal,
 } from "./risk-signals.js";
 
+function matchesKeyword(
+  text: string,
+  keyword: string,
+): boolean {
+  const escapedKeyword = keyword.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&",
+  );
+
+  const pattern = new RegExp(
+    `\\b${escapedKeyword}\\b`,
+    "i",
+  );
+
+  return pattern.test(text);
+}
+
 export function detectRiskSignals(
   change: string,
 ): RiskSignal[] {
-  const normalizedChange = change.toLowerCase();
-
   return riskSignals.filter((signal) =>
     signal.keywords.some((keyword) =>
-      normalizedChange.includes(keyword),
+      matchesKeyword(change, keyword),
     ),
   );
 }

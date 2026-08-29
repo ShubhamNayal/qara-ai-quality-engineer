@@ -94,10 +94,12 @@ The response MUST match this structure exactly:
     }
   ],
   "recommendedTests": [
+   {
     "area": "string",
-"priority": "LOW | MEDIUM | HIGH | CRITICAL",
-"scenario": "string",
-"expectedBehavior": "string"
+    "priority": "LOW | MEDIUM | HIGH | CRITICAL",
+    "scenario": "string",
+    "expectedBehavior": "string"
+  }
   ]
 }
 

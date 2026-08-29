@@ -24,12 +24,11 @@ export const riskProfiles: RiskProfile[] = [
     "PERFORMANCE",
   ],
   keywords: [
-    "import",
-    "upload",
-    "csv",
-    "bulk",
-    "migration",
-  ],
+  "import",
+  "upload",
+  "csv",
+  "bulk",
+],
   baseRiskScore: 70,
 },
   {
@@ -67,5 +66,37 @@ export const riskProfiles: RiskProfile[] = [
     "oauth",
   ],
   baseRiskScore: 80,
+},
+  {
+    featureType: "authorization",
+    categories: [
+      "SECURITY",
+      "AUTHORIZATION",
+      "DATA_INTEGRITY",
+    ],
+    keywords: [
+      "authorization",
+      "permission",
+      "role-based access",
+      "access control",
+      "admin access",
+      "privilege",
+    ],
+    baseRiskScore: 75,
+  },
+   {
+  featureType: "database-change",
+  categories: [
+    "DATA_INTEGRITY",
+    "AVAILABILITY",
+    "PERFORMANCE",
+  ],
+  keywords: [
+    "database migration",
+    "schema migration",
+    "alter table",
+    "database schema",
+  ],
+  baseRiskScore: 85,
 },
 ];

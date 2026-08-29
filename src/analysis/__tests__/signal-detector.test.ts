@@ -61,4 +61,33 @@ describe("Risk Signal Detector", () => {
 
     expect(signals).toHaveLength(0);
   });
+
+ 
+  it("does not match keywords inside larger words", () => {
+    const change = `
+      Refactor the tokenization utility.
+    `;
+
+    const signals = detectRiskSignals(change);
+
+    expect(signals.map((signal) => signal.name)).not.toContain(
+      "authentication",
+    );
+  });
+
+  it("matches keywords when they appear as complete words", () => {
+    const change = `
+      Update the authentication flow.
+    `;
+
+    const signals = detectRiskSignals(change);
+
+    expect(signals.map((signal) => signal.name)).toContain(
+      "authentication",
+    );
+  });
+
+
+
+
 });

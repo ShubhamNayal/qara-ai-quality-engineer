@@ -148,4 +148,51 @@ describe("Change Classifier", () => {
     );
     expect(result.riskScore).toBe(70);
   });
+    it("classifies authorization changes", () => {
+    const change = `
+      Add role-based access control for admin endpoints.
+      Only users with the required permission can access them.
+    `;
+
+    const result = classifyChange(change);
+
+    expect(result.profiles).toHaveLength(1);
+    expect(result.profiles[0]?.featureType).toBe(
+      "authorization",
+    );
+  });
+
+  it("assigns a high risk score to authorization changes", () => {
+    const change = `
+      Introduce permission checks for admin access.
+    `;
+
+    const result = classifyChange(change);
+
+    expect(result.riskScore).toBe(75);
+  });
+    it("classifies database schema changes", () => {
+    const change = `
+      Add a database migration to add a new column
+      to the contacts table.
+    `;
+
+    const result = classifyChange(change);
+
+    expect(result.profiles).toHaveLength(1);
+    expect(result.profiles[0]?.featureType).toBe(
+      "database-change",
+    );
+  });
+
+  it("assigns a high risk score to database changes", () => {
+    const change = `
+      Introduce a database schema migration
+      for the contacts table.
+    `;
+
+    const result = classifyChange(change);
+
+    expect(result.riskScore).toBe(85);
+  });
 });
