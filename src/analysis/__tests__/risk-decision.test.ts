@@ -1,29 +1,31 @@
+
 import { describe, expect, it } from "vitest";
 
 import { getRiskDecision } from "../risk-decision.js";
 
 describe("Risk Decision", () => {
-  it("allows low-risk changes to proceed", () => {
+  it("recommends routine testing for low-risk changes", () => {
     expect(getRiskDecision("LOW")).toBe(
-      "SAFE_TO_PROCEED",
+      "ROUTINE_TESTING",
     );
   });
 
-  it("requires testing for medium-risk changes", () => {
+  it("recommends testing for medium-risk changes", () => {
     expect(getRiskDecision("MEDIUM")).toBe(
-      "TEST_BEFORE_RELEASE",
+      "TESTING_RECOMMENDED",
     );
   });
 
   it("requires testing for high-risk changes", () => {
     expect(getRiskDecision("HIGH")).toBe(
-      "TEST_BEFORE_RELEASE",
+      "MUST_TEST",
     );
   });
 
-  it("blocks critical-risk changes", () => {
+  it("requires testing before release for critical-risk changes", () => {
     expect(getRiskDecision("CRITICAL")).toBe(
-      "BLOCK_RELEASE",
+      "MUST_TEST_BEFORE_RELEASE",
     );
   });
 });
+

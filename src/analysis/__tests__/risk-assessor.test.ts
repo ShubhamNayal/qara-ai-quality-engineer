@@ -70,7 +70,7 @@ describe("Risk Assessor", () => {
     const result = assessRisk(change);
 
     expect(result.riskLevel).toBe("CRITICAL");
-    expect(result.decision).toBe("BLOCK_RELEASE");
+    expect(result.decision).toBe("MUST_TEST_BEFORE_RELEASE");
   });
 
   it("allows low-risk changes to proceed", () => {
@@ -81,6 +81,6 @@ describe("Risk Assessor", () => {
     const result = assessRisk(change);
 
     expect(result.riskLevel).toBe("LOW");
-    expect(result.decision).toBe("SAFE_TO_PROCEED");
+    expect(result.decision).toBe("ROUTINE_TESTING");
   });
 });

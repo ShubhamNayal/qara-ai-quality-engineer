@@ -7,17 +7,43 @@ import {
 export interface ClassificationResult {
   profiles: RiskProfile[];
   categories: RiskCategory[];
-    riskScore: number;
+  riskScore: number;
+}
+
+function matchesBusinessKeyword(
+  text: string,
+  keyword: string,
+): boolean {
+  const escapedKeyword = keyword.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&",
+  );
+
+  // Ignore JavaScript/TypeScript module imports such as:
+  // import { foo } from "./foo.js"
+  if (
+    keyword === "import" &&
+    /\bimport\s+(?:type\s+)?(?:\{[^}]*\}|\w+)\s+from\s+["']/.test(
+      text,
+    )
+  ) {
+    return false;
+  }
+
+  const pattern = new RegExp(
+    `\\b${escapedKeyword}\\b`,
+    "i",
+  );
+
+  return pattern.test(text);
 }
 
 export function classifyChange(
   change: string,
 ): ClassificationResult {
-  const normalizedChange = change.toLowerCase();
-
   const profiles = riskProfiles.filter((profile) =>
     profile.keywords.some((keyword) =>
-      normalizedChange.includes(keyword),
+      matchesBusinessKeyword(change, keyword),
     ),
   );
 
@@ -26,8 +52,18 @@ export function classifyChange(
       profiles.flatMap((profile) => profile.categories),
     ),
   ];
-  const riskScore = profiles.length===0?0:
-            Math.min(100,Math.max(...profiles.map((profile) => profile.baseRiskScore)));
+
+  const riskScore =
+    profiles.length === 0
+      ? 0
+      : Math.min(
+          100,
+          Math.max(
+            ...profiles.map(
+              (profile) => profile.baseRiskScore,
+            ),
+          ),
+        );
 
   return {
     profiles,

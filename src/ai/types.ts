@@ -1,11 +1,3 @@
-export interface AIAnalysisRisk {
-  title: string;
-  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-  reason: string;
-}
+import type { QAAnalysis } from "../analysis/schema.js";
 
-export interface AIAnalysis {
-  summary: string;
-  risks: AIAnalysisRisk[];
-  recommendedTests: string[];
-}
+export type AIAnalysis = QAAnalysis;

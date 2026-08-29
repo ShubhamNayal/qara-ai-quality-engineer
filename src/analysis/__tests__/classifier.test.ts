@@ -121,4 +121,31 @@ describe("Change Classifier", () => {
     expect(result.riskScore).toBe(0);
   });
 
+    it("does not classify a TypeScript module import as data-import", () => {
+    const change = `
+      import { getGitDiff } from "./input/git-diff.js";
+      import { extractAddedLines } from "./input/change-extractor.js";
+    `;
+
+    const result = classifyChange(change);
+
+    expect(result.profiles).toHaveLength(0);
+    expect(result.categories).toHaveLength(0);
+    expect(result.riskScore).toBe(0);
+  });
+
+  it("still classifies business CSV import functionality as data-import", () => {
+    const change = `
+      Add CSV import functionality for contacts.
+      Users can import contacts in bulk.
+    `;
+
+    const result = classifyChange(change);
+
+    expect(result.profiles).toHaveLength(1);
+    expect(result.profiles[0]?.featureType).toBe(
+      "data-import",
+    );
+    expect(result.riskScore).toBe(70);
+  });
 });

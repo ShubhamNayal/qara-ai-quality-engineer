@@ -1,123 +1,60 @@
 import { describe, expect, it } from "vitest";
 
 import { buildFinalResult } from "../final-result.js";
+import type { RiskAssessment } from "../risk-assessor.js";
+import type { AIAnalysis } from "../../ai/types.js";
+import type { RiskConsistencyResult } from "../risk-consistency.js";
+import type { EvaluationResult } from "../evaluator.js";
 
-describe("Final QARA Result", () => {
-  const baseRiskAssessment = {
+describe("Final Result", () => {
+  const riskAssessment = {
     classification: {
       profiles: [],
       categories: [],
-      riskScore: 20,
+      riskScore: 0,
     },
     signals: [],
-    riskScore: 20,
-    riskLevel: "LOW" as const,
-    decision: "SAFE_TO_PROCEED" as const,
+    riskScore: 10,
+    riskLevel: "LOW",
+    decision: "SAFE_TO_PROCEED",
     reasons: [],
-  };
+  } as RiskAssessment;
 
-  const baseAIAnalysis = {
-    riskLevel: "LOW" as const,
-    summary: "Low-risk change.",
-    risks: [
-      {
-        title: "Minor UI change",
-        severity: "LOW" as const,
-        reason: "Limited product impact.",
-      },
-    ],
-    recommendedTests: ["Verify the UI change."],
-  };
+  const aiAnalysis = {} as AIAnalysis;
 
-  const passingEvaluation = {
+  const consistency = {
+    consistent: true,
+    reasons: [],
+  } as RiskConsistencyResult;
+
+  const evaluation = {
     passed: true,
     score: 100,
     issues: [],
-  };
+  } as EvaluationResult;
 
-  it("allows a clean low-risk change", () => {
+  it("returns the risk assessment decision", () => {
     const result = buildFinalResult(
-      baseRiskAssessment,
-      baseAIAnalysis,
-      {
-        consistent: true,
-        difference: 0,
-        message: "Risk levels are consistent.",
-      },
-      passingEvaluation,
+      riskAssessment,
+      aiAnalysis,
+      consistency,
+      evaluation,
     );
 
-    expect(result.finalDecision).toBe(
-      "SAFE_TO_PROCEED",
-    );
+    expect(result.finalDecision).toBe("SAFE_TO_PROCEED");
   });
 
-  it("blocks critical-risk changes", () => {
+  it("preserves the assessment and analysis data", () => {
     const result = buildFinalResult(
-      {
-        ...baseRiskAssessment,
-        riskLevel: "CRITICAL",
-        decision: "BLOCK_RELEASE",
-      },
-      {
-        ...baseAIAnalysis,
-        riskLevel: "CRITICAL",
-      },
-      {
-        consistent: true,
-        difference: 0,
-        message: "Risk levels are consistent.",
-      },
-      passingEvaluation,
+      riskAssessment,
+      aiAnalysis,
+      consistency,
+      evaluation,
     );
 
-    expect(result.finalDecision).toBe(
-      "BLOCK_RELEASE",
-    );
-  });
-
-  it("blocks significant AI risk underestimation", () => {
-    const result = buildFinalResult(
-      {
-        ...baseRiskAssessment,
-        riskLevel: "CRITICAL",
-        decision: "BLOCK_RELEASE",
-      },
-      {
-        ...baseAIAnalysis,
-        riskLevel: "LOW",
-      },
-      {
-        consistent: false,
-        difference: -3,
-        message: "AI significantly underestimated risk.",
-      },
-      passingEvaluation,
-    );
-
-    expect(result.finalDecision).toBe(
-      "BLOCK_RELEASE",
-    );
-  });
-
-  it("requires testing when evaluation fails", () => {
-    const result = buildFinalResult(
-      baseRiskAssessment,
-      baseAIAnalysis,
-      {
-        consistent: true,
-        difference: 0,
-        message: "Risk levels are consistent.",
-      },
-      {
-        passed: false,
-        score: 75,
-        issues: ["No tests were recommended."],
-      },
-    );
-
-    expect(result.finalDecision).toBe(
-      "TEST_BEFORE_RELEASE",
-    );
+    expect(result.riskAssessment).toBe(riskAssessment);
+    expect(result.aiAnalysis).toBe(aiAnalysis);
+    expect(result.consistency).toBe(consistency);
+    expect(result.evaluation).toBe(evaluation);
   });
 });

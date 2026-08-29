@@ -17,7 +17,10 @@ export async function analyzeChange(change: string) {
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 2000,
+    max_tokens: 4000,
+    thinking:{
+        type:"disabled"
+    },
     messages: [
       {
         role: "user",
@@ -25,6 +28,8 @@ export async function analyzeChange(change: string) {
       },
     ],
   });
+    // console.log("\nCLAUDE RAW RESPONSE:\n");
+    // console.log(JSON.stringify(response, null, 2));
 
   const textBlock = response.content.find(
     (block) => block.type === "text",
@@ -34,7 +39,7 @@ export async function analyzeChange(change: string) {
     throw new Error("Claude returned no text response.");
   }
 
-  const aiAnalysis = parseAIAnalysis(textBlock.text);
+  const aiAnalysis = parseAIAnalysis(textBlock.text); 
 
   const consistency = checkRiskConsistency(
     riskAssessment.riskLevel,
