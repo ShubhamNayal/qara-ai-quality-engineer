@@ -3,6 +3,8 @@ import {
   type RiskSignal,
 } from "./risk-signals.js";
 
+import { stripComments } from "./code-sanitizer.js";
+
 function matchesKeyword(
   text: string,
   keyword: string,
@@ -23,9 +25,11 @@ function matchesKeyword(
 export function detectRiskSignals(
   change: string,
 ): RiskSignal[] {
+  const code = stripComments(change);
+
   return riskSignals.filter((signal) =>
     signal.keywords.some((keyword) =>
-      matchesKeyword(change, keyword),
+      matchesKeyword(code, keyword),
     ),
   );
 }
