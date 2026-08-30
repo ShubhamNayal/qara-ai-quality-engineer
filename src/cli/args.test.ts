@@ -59,6 +59,24 @@ describe("CLI Arguments", () => {
     ).toThrow("--base requires a Git reference.");
   });
 
+  it("accepts a previous-state-file path", () => {
+    expect(
+      parseArgs(["--previous-state-file", "qara-previous-state.json"]),
+    ).toEqual({
+      base: "HEAD",
+      json: false,
+      markdown: false,
+      noFail: false,
+      previousStateFile: "qara-previous-state.json",
+    });
+  });
+
+  it("rejects a missing previous-state-file value", () => {
+    expect(() =>
+      parseArgs(["--previous-state-file"]),
+    ).toThrow("--previous-state-file requires a path.");
+  });
+
   it("accepts markdown comment-bot flags", () => {
     expect(
       parseArgs([

@@ -31,3 +31,4 @@ export const qaAnalysisSchema = z.object({
 
 export type QAAnalysis = z.infer<typeof qaAnalysisSchema>;
 
+export type RecommendedTest = z.infer<typeof recommendedTestSchema>;

@@ -1,9 +1,19 @@
 import type { ExistingTest } from "../input/existing-tests.js";
 import type { QARAResult } from "../analysis/final-result.js";
+import type { RecommendedTest } from "../analysis/schema.js";
+import { encodePendingState } from "../analysis/recommendation-state.js";
 
 export const PR_COMMENT_MARKER = "<!-- qara-qa-bot -->";
 
-export type PrCommentInput =
+export type PrCommentInput = {
+  /**
+   * The recommendation list QARA should keep tracking for this PR after
+   * this run — already reconciled against what the developer has added
+   * so far. Persisted (hidden) in every comment variant so it survives
+   * to the next push, even for kinds that don't display it.
+   */
+  pendingState: RecommendedTest[];
+} & (
   | {
       kind: "no-changes";
     }
@@ -24,7 +34,10 @@ export type PrCommentInput =
       services: string[];
       affectedAreas: string[];
       existingTests: ExistingTest[];
-    };
+      /** How many previously-pending recommendations this push satisfied. */
+      newlySatisfiedCount: number;
+    }
+);
 
 function bulletList(items: string[]): string {
   return items.map((item) => `- **${item}**`).join("\n");
@@ -50,9 +63,7 @@ function formatExistingTests(tests: ExistingTest[]): string {
     .join("\n");
 }
 
-function formatRecommendedTests(result: QARAResult): string {
-  const tests = result.aiAnalysis.recommendedTests;
-
+function formatRecommendedTests(tests: RecommendedTest[]): string {
   if (tests.length === 0) {
     return "Existing coverage looks sufficient for this change. No additional regression tests recommended.";
   }
@@ -67,7 +78,7 @@ function formatRecommendedTests(result: QARAResult): string {
     .join("\n\n");
 }
 
-export function formatPrComment(input: PrCommentInput): string {
+function buildCommentBody(input: PrCommentInput): string {
   if (input.kind === "no-changes") {
     return `${PR_COMMENT_MARKER}
 ## QARA QA Review
@@ -116,6 +127,13 @@ QARA comments on product PRs with affected services, areas, and additional tests
       ? bulletList(input.affectedAreas)
       : "- _No high-risk product areas matched this change._";
 
+  const satisfiedNote =
+    input.newlySatisfiedCount > 0
+      ? `✅ ${input.newlySatisfiedCount} previously recommended test${
+          input.newlySatisfiedCount === 1 ? "" : "s"
+        } added in this push.\n\n`
+      : "";
+
   return `${PR_COMMENT_MARKER}
 ## QARA QA Review
 
@@ -131,8 +149,14 @@ ${affectedAreas}
 ${formatExistingTests(input.existingTests)}
 
 ### Additional tests to add
-Apart from the current test cases, you should add:
+${satisfiedNote}Apart from the current test cases, you should add:
 
-${formatRecommendedTests(input.result)}
+${formatRecommendedTests(input.pendingState)}
 `;
+}
+
+export function formatPrComment(input: PrCommentInput): string {
+  const body = buildCommentBody(input);
+
+  return `${body}\n${encodePendingState(input.pendingState)}\n`;
 }

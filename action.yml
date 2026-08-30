@@ -33,6 +33,14 @@ runs:
       working-directory: ${{ github.action_path }}
       run: npm run build
 
+    - name: Fetch previous QARA state
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: node "${{ github.action_path }}/scripts/fetch-pr-state.mjs" qara-previous-state.json
+
     - name: Analyze pull request
       shell: bash
       working-directory: ${{ github.workspace }}
@@ -48,7 +56,8 @@ runs:
           --base "$BASE" \
           --markdown \
           --no-fail \
-          --comment-file qara-comment.md
+          --comment-file qara-comment.md \
+          --previous-state-file qara-previous-state.json
 
     - name: Comment on pull request
       shell: bash

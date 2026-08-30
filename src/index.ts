@@ -8,6 +8,8 @@ import { findExistingTests } from "./input/existing-tests.js";
 import { getExitCode } from "./cli/exit-code.js";
 import { parseArgs, type CLIOptions } from "./cli/args.js";
 import { stripComments } from "./analysis/code-sanitizer.js";
+import { loadPreviousPending } from "./analysis/recommendation-state.js";
+import { reconcileRecommendations } from "./analysis/recommendation-reconciler.js";
 import {
   formatPrComment,
   type PrCommentInput,
@@ -15,6 +17,7 @@ import {
 import type { QARAResult } from "./analysis/final-result.js";
 
 const options = parseArgs(process.argv.slice(2));
+const previousPending = loadPreviousPending(options.previousStateFile);
 
 function printHumanAnalysis(analysis: QARAResult): void {
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -127,6 +130,13 @@ function printHumanAnalysis(analysis: QARAResult): void {
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 }
 
+function stripBotMarkers(comment: string): string {
+  return comment
+    .replace("<!-- qara-qa-bot -->\n", "")
+    .replace(/<!-- qara-state:[A-Za-z0-9+/=]*\s*-->\n?/u, "")
+    .trim();
+}
+
 function finish(
   options: CLIOptions,
   commentInput: PrCommentInput,
@@ -160,7 +170,7 @@ function finish(
     console.log("\nQARA analyzing Git changes...\n");
     printHumanAnalysis(analysis);
   } else {
-    console.log(comment.replace("<!-- qara-qa-bot -->\n", "").trim());
+    console.log(stripBotMarkers(comment));
   }
 
   process.exit(
@@ -171,6 +181,7 @@ function finish(
 try {
   const diff = await getGitDiff(options.base);
   const extractedChange = extractChange(diff);
+  const existingTests = findExistingTests(extractedChange.files);
 
   const meaningfulAddedLines = stripComments(
     extractedChange.addedLines.join("\n"),
@@ -181,16 +192,29 @@ try {
   ).trim();
 
   if (!meaningfulAddedLines && !meaningfulRemovedLines) {
-    finish(options, { kind: "no-meaningful-changes" });
+    const { pending } = reconcileRecommendations(
+      previousPending,
+      [],
+      existingTests,
+    );
+
+    finish(options, {
+      kind: "no-meaningful-changes",
+      pendingState: pending,
+    });
   }
 
   const change = formatChangeForAnalysis(extractedChange);
 
   if (!change) {
-    finish(options, { kind: "no-changes" });
-  }
+    const { pending } = reconcileRecommendations(
+      previousPending,
+      [],
+      existingTests,
+    );
 
-  const existingTests = findExistingTests(extractedChange.files);
+    finish(options, { kind: "no-changes", pendingState: pending });
+  }
 
   const { analyzeChange } = await import("./analysis/analyzer.js");
 
@@ -200,16 +224,29 @@ try {
   });
 
   if (analysis.aiAnalysis.isQaraChange) {
+    const { pending } = reconcileRecommendations(
+      previousPending,
+      [],
+      existingTests,
+    );
+
     finish(
       options,
       {
         kind: "qara-internal",
         summary: analysis.aiAnalysis.summary,
+        pendingState: pending,
       },
       analysis,
       analysis.finalDecision,
     );
   }
+
+  const { pending, satisfiedCount } = reconcileRecommendations(
+    previousPending,
+    analysis.aiAnalysis.recommendedTests,
+    existingTests,
+  );
 
   finish(
     options,
@@ -219,6 +256,8 @@ try {
       services: analysis.services,
       affectedAreas: analysis.affectedAreas,
       existingTests: analysis.existingTests,
+      pendingState: pending,
+      newlySatisfiedCount: satisfiedCount,
     },
     analysis,
     analysis.finalDecision,
@@ -228,7 +267,11 @@ try {
     error instanceof Error ? error.message : String(error);
 
   if (options.noFail) {
-    finish(options, { kind: "error", message });
+    finish(options, {
+      kind: "error",
+      message,
+      pendingState: previousPending,
+    });
   }
 
   throw error;
