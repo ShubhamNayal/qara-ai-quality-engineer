@@ -156,5 +156,8 @@ describe("Final Result", () => {
     expect(result.aiAnalysis).toBe(aiAnalysis);
     expect(result.consistency).toBe(baseConsistency);
     expect(result.evaluation).toBe(passingEvaluation);
+    expect(result.services).toEqual([]);
+    expect(result.affectedAreas).toEqual([]);
+    expect(result.existingTests).toEqual([]);
   });
 });

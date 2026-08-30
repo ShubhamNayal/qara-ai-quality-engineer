@@ -1,19 +1,20 @@
-name: QARA Quality Gate
+name: QARA Quality Bot
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-jobs:
-  qara:
-    name: QARA Risk Analysis
-    runs-on: ubuntu-latest
+permissions:
+  contents: read
+  pull-requests: write
 
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,12 +28,16 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Build QARA
-        run: npm run build
+  qara:
+    name: QARA PR comment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Run QARA
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          npm start -- \
-            --base ${{ github.event.pull_request.base.sha }}
+      - name: Run QARA bot
+        uses: ./
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}

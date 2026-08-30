@@ -1,0 +1,59 @@
+name: QARA
+description: Comment on product pull requests with affected services, areas, and additional tests to add.
+author: QARA
+
+inputs:
+  anthropic-api-key:
+    description: Anthropic API key used to generate the QA review.
+    required: true
+  github-token:
+    description: Token used to post or update the pull request comment.
+    required: false
+    default: ${{ github.token }}
+  base:
+    description: Git SHA or ref to compare against. Defaults to the pull request base SHA.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
+    - name: Install QARA
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm ci
+
+    - name: Build QARA
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm run build
+
+    - name: Analyze pull request
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+      run: |
+        BASE="${{ inputs.base }}"
+        if [ -z "$BASE" ]; then
+          BASE="${{ github.event.pull_request.base.sha }}"
+        fi
+
+        node "${{ github.action_path }}/dist/index.js" \
+          --base "$BASE" \
+          --markdown \
+          --no-fail \
+          --comment-file qara-comment.md
+
+    - name: Comment on pull request
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: node "${{ github.action_path }}/scripts/post-pr-comment.mjs" qara-comment.md

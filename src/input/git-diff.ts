@@ -6,9 +6,14 @@ const execFileAsync = promisify(execFile);
 export async function getGitDiff(
   base = "HEAD",
 ): Promise<string> {
+  const diffArgs =
+    base === "HEAD"
+      ? ["diff", "HEAD", "--"]
+      : ["diff", `${base}...HEAD`, "--"];
+
   const { stdout } = await execFileAsync(
     "git",
-    ["diff", base, "--"],
+    diffArgs,
     {
       maxBuffer: 10 * 1024 * 1024,
     },
