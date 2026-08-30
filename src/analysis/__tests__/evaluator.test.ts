@@ -1,3 +1,4 @@
+
 import { describe, expect, it } from "vitest";
 import {
   evaluateAnalysis,
@@ -41,7 +42,7 @@ describe("QA Analysis Evaluator", () => {
     expect(result.issues).toHaveLength(0);
   });
 
-  it("fails when no risks are identified", () => {
+  it("passes LOW risk analysis even when no risks are identified", () => {
     const analysis: QAAnalysis = {
       riskLevel: "LOW",
 
@@ -49,18 +50,17 @@ describe("QA Analysis Evaluator", () => {
 
       risks: [],
 
-      recommendedTests: ["Test successful import"],
+      recommendedTests: [],
     };
 
     const result = evaluateAnalysis(analysis);
 
-    expect(result.passed).toBe(false);
-    expect(result.issues).toContain(
-      "No risks were identified.",
-    );
+    expect(result.passed).toBe(true);
+    expect(result.score).toBe(100);
+    expect(result.issues).toHaveLength(0);
   });
 
-  it("fails when no tests are recommended", () => {
+  it("fails HIGH risk analysis when no tests are recommended", () => {
     const analysis: QAAnalysis = {
       riskLevel: "HIGH",
 
@@ -70,7 +70,8 @@ describe("QA Analysis Evaluator", () => {
         {
           title: "Data corruption",
           severity: "HIGH",
-          reason: "Invalid imports could corrupt contact data.",
+          reason:
+            "Invalid imports could corrupt contact data.",
         },
       ],
 
@@ -81,8 +82,8 @@ describe("QA Analysis Evaluator", () => {
 
     expect(result.passed).toBe(false);
     expect(result.issues).toContain(
-      "No tests were recommended.",
-    );
+  "HIGH risk should recommend at least 2 regression test(s), but 0 were recommended.",
+);
   });
 
   it("detects inconsistent overall risk", () => {
@@ -110,4 +111,31 @@ describe("QA Analysis Evaluator", () => {
       "CRITICAL overall risk has no HIGH or CRITICAL risk identified.",
     );
   });
+  it("passes QARA-internal changes without requiring regression tests", () => {
+  const analysis: QAAnalysis = {
+    isQaraChange: true,
+
+    riskLevel: "CRITICAL",
+
+    summary:
+      "The change modifies QARA's own analysis infrastructure.",
+
+    risks: [
+      {
+        title: "QARA-internal change",
+        severity: "CRITICAL",
+        reason:
+          "The supplied change modifies QARA itself rather than an external product.",
+      },
+    ],
+
+    recommendedTests: [],
+  };
+
+  const result = evaluateAnalysis(analysis);
+
+  expect(result.passed).toBe(true);
+  expect(result.score).toBe(100);
+  expect(result.issues).toHaveLength(0);
+});
 });
