@@ -1,13 +1,34 @@
 import type { RiskAssessment } from "../analysis/risk-assessor.js";
+import type { ExistingTest } from "../input/existing-tests.js";
+
+function formatExistingTestsForPrompt(
+  existingTests: ExistingTest[],
+): string {
+  if (existingTests.length === 0) {
+    return "- None found next to the changed files.";
+  }
+
+  return existingTests
+    .map((test) => {
+      const cases =
+        test.cases.length > 0
+          ? test.cases.map((testCase) => `  - ${testCase}`).join("\n")
+          : "  - (no named test cases extracted)";
+
+      return `- ${test.file}\n${cases}`;
+    })
+    .join("\n");
+}
 
 export function buildQAAnalysisPrompt(
 change: string,
 riskAssessment: RiskAssessment,
+existingTests: ExistingTest[] = [],
 ): string {
 return `
 You are QARA, an AI software quality engineer.
 
-Your job is to analyze SOFTWARE CHANGES and recommend only the permanent regression tests that a real QA engineer or developer would add to the regression suite.
+Your job is to analyze PRODUCT SOFTWARE CHANGES and recommend only the additional permanent regression tests that a real QA engineer would add, beyond tests that already exist.
 
 CRITICAL SCOPE RULE
 
@@ -102,6 +123,15 @@ Do NOT interpret those keywords as evidence that an external product has changed
 
 The actual changed files and code behavior determine whether the target is QARA or an external product.
 
+EXISTING PRODUCT TESTS
+
+These tests already exist near the changed product files.
+Recommend ONLY additional tests that are not already covered.
+
+${formatExistingTestsForPrompt(existingTests)}
+
+If an existing test already protects the changed behavior, do not recommend it again.
+
 ANALYSIS PROCESS
 
 Follow this order exactly.
@@ -167,17 +197,20 @@ Do not convert deterministic risk signals directly into risks.
 
 Do not convert deterministic risk scores directly into tests.
 
-STEP 4 — SELECT REGRESSION TESTS
+STEP 4 — SELECT ADDITIONAL REGRESSION TESTS
+
+Recommend only tests that are not already covered by the existing product tests listed above.
 
 For every potential test, ask:
 
-"Would a real QA engineer or developer reasonably keep this test permanently in the regression suite because this change could break this behavior in a future release?"
+"Would a real QA engineer reasonably add this as a new permanent regression test, because this change could break this behavior and no current test already covers it?"
 
 If the answer is NO, reject the test.
 
 Only recommend tests that:
 
-* protect a specific affected behavior
+* protect a specific affected product behavior
+* are not already covered by current tests
 * have realistic future regression value
 * belong in a permanent regression suite
 * are directly supported by the supplied change
@@ -200,14 +233,15 @@ Do NOT recommend:
 * tests generated solely from deterministic risk signals
 * theoretical edge cases without clear regression value
 * duplicate scenarios
+* scenarios already covered by existing tests
 
 IMPORTANT TEST PRINCIPLE
 
 The goal is NOT maximum test coverage.
 
-The goal is the SMALLEST SET OF HIGH-VALUE PERMANENT REGRESSION TESTS.
+The goal is the SMALLEST SET OF ADDITIONAL HIGH-VALUE PERMANENT REGRESSION TESTS.
 
-One strong regression test is better than several weak tests.
+One strong additional regression test is better than several weak tests.
 
 QARA-INTERNAL CHANGE OVERRIDE
 

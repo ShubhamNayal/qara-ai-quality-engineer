@@ -7,6 +7,8 @@ describe("CLI Arguments", () => {
     expect(parseArgs([])).toEqual({
       base: "HEAD",
       json: false,
+      markdown: false,
+      noFail: false,
     });
   });
 
@@ -16,6 +18,8 @@ describe("CLI Arguments", () => {
     ).toEqual({
       base: "origin/main",
       json: false,
+      markdown: false,
+      noFail: false,
     });
   });
 
@@ -23,6 +27,8 @@ describe("CLI Arguments", () => {
     expect(parseArgs(["--json"])).toEqual({
       base: "HEAD",
       json: true,
+      markdown: false,
+      noFail: false,
     });
   });
 
@@ -36,6 +42,8 @@ describe("CLI Arguments", () => {
     ).toEqual({
       base: "origin/main",
       json: true,
+      markdown: false,
+      noFail: false,
     });
   });
 
@@ -49,5 +57,22 @@ describe("CLI Arguments", () => {
     expect(() =>
       parseArgs(["--base"]),
     ).toThrow("--base requires a Git reference.");
+  });
+
+  it("accepts markdown comment-bot flags", () => {
+    expect(
+      parseArgs([
+        "--markdown",
+        "--no-fail",
+        "--comment-file",
+        "qara-comment.md",
+      ]),
+    ).toEqual({
+      base: "HEAD",
+      json: false,
+      markdown: true,
+      noFail: true,
+      commentFile: "qara-comment.md",
+    });
   });
 });

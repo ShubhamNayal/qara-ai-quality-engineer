@@ -1,80 +1,22 @@
 import "dotenv/config";
+import { writeFileSync } from "node:fs";
 
-import { analyzeChange } from "./analysis/analyzer.js";
 import { getGitDiff } from "./input/git-diff.js";
 import { extractChange } from "./input/change-extractor.js";
 import { formatChangeForAnalysis } from "./input/change-formatter.js";
+import { findExistingTests } from "./input/existing-tests.js";
 import { getExitCode } from "./cli/exit-code.js";
-import { parseArgs } from "./cli/args.js";
+import { parseArgs, type CLIOptions } from "./cli/args.js";
 import { stripComments } from "./analysis/code-sanitizer.js";
+import {
+  formatPrComment,
+  type PrCommentInput,
+} from "./output/pr-comment.js";
+import type { QARAResult } from "./analysis/final-result.js";
 
 const options = parseArgs(process.argv.slice(2));
 
-const diff = await getGitDiff(options.base);
-const extractedChange = extractChange(diff);
-
-const meaningfulAddedLines = stripComments(
-  extractedChange.addedLines.join("\n"),
-).trim();
-
-const meaningfulRemovedLines = stripComments(
-  extractedChange.removedLines.join("\n"),
-).trim();
-
-if (!meaningfulAddedLines && !meaningfulRemovedLines) {
-  if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          status: "NO_MEANINGFUL_CHANGES",
-          message:
-            "No meaningful code changes detected. Comments-only changes do not require risk analysis.",
-        },
-        null,
-        2,
-      ),
-    );
-  } else {
-    console.log(
-      "No meaningful code changes detected. Comments-only changes do not require risk analysis.",
-    );
-  }
-
-  process.exit(0);
-}
-
-const change = formatChangeForAnalysis(extractedChange);
-
-if (!change) {
-  if (options.json) {
-    console.log(
-      JSON.stringify(
-        {
-          status: "NO_CHANGES",
-          message: "No Git changes detected.",
-        },
-        null,
-        2,
-      ),
-    );
-  } else {
-    console.log("No Git changes detected.");
-  }
-
-  process.exit(0);
-}
-
-if (!options.json) {
-  console.log("\nQARA analyzing Git changes...\n");
-}
-
-const analysis = await analyzeChange(change);
-
-if (options.json) {
-  console.log(
-    JSON.stringify(analysis, null, 2),
-  );
-} else {
+function printHumanAnalysis(analysis: QARAResult): void {
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
   console.log(
@@ -88,6 +30,18 @@ if (options.json) {
   console.log(
     `Risk Score: ${analysis.riskAssessment.riskScore}/100`,
   );
+
+  if (analysis.services.length > 0) {
+    console.log(
+      `\nServices: ${analysis.services.join(", ")}`,
+    );
+  }
+
+  if (analysis.affectedAreas.length > 0) {
+    console.log(
+      `Affected areas: ${analysis.affectedAreas.join(", ")}`,
+    );
+  }
 
   console.log("\nWHY?");
 
@@ -116,7 +70,17 @@ if (options.json) {
     });
   }
 
-  console.log("\nRECOMMENDED QA TESTS");
+  console.log("\nCURRENT TESTS");
+
+  if (analysis.existingTests.length === 0) {
+    console.log("No existing tests found next to the changed files.");
+  } else {
+    for (const test of analysis.existingTests) {
+      console.log(`• ${test.file}`);
+    }
+  }
+
+  console.log("\nADDITIONAL QA TESTS TO ADD");
 
   if (analysis.aiAnalysis.recommendedTests.length === 0) {
     console.log("No additional QA tests recommended.");
@@ -163,9 +127,109 @@ if (options.json) {
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 }
 
-const exitCode = getExitCode(
-  analysis.finalDecision,
-);
+function finish(
+  options: CLIOptions,
+  commentInput: PrCommentInput,
+  analysis?: QARAResult,
+  decision?: QARAResult["finalDecision"],
+): never {
+  const comment = formatPrComment(commentInput);
 
-process.exit(exitCode);
+  if (options.commentFile) {
+    writeFileSync(options.commentFile, comment);
+  }
 
+  if (options.markdown) {
+    console.log(comment);
+  } else if (options.json) {
+    if (analysis) {
+      console.log(JSON.stringify(analysis, null, 2));
+    } else {
+      console.log(
+        JSON.stringify(
+          {
+            status: commentInput.kind.toUpperCase().replaceAll("-", "_"),
+            comment,
+          },
+          null,
+          2,
+        ),
+      );
+    }
+  } else if (analysis) {
+    console.log("\nQARA analyzing Git changes...\n");
+    printHumanAnalysis(analysis);
+  } else {
+    console.log(comment.replace("<!-- qara-qa-bot -->\n", "").trim());
+  }
+
+  process.exit(
+    getExitCode(decision ?? "ROUTINE_TESTING", options.noFail),
+  );
+}
+
+try {
+  const diff = await getGitDiff(options.base);
+  const extractedChange = extractChange(diff);
+
+  const meaningfulAddedLines = stripComments(
+    extractedChange.addedLines.join("\n"),
+  ).trim();
+
+  const meaningfulRemovedLines = stripComments(
+    extractedChange.removedLines.join("\n"),
+  ).trim();
+
+  if (!meaningfulAddedLines && !meaningfulRemovedLines) {
+    finish(options, { kind: "no-meaningful-changes" });
+  }
+
+  const change = formatChangeForAnalysis(extractedChange);
+
+  if (!change) {
+    finish(options, { kind: "no-changes" });
+  }
+
+  const existingTests = findExistingTests(extractedChange.files);
+
+  const { analyzeChange } = await import("./analysis/analyzer.js");
+
+  const analysis = await analyzeChange(change, {
+    files: extractedChange.files,
+    existingTests,
+  });
+
+  if (analysis.aiAnalysis.isQaraChange) {
+    finish(
+      options,
+      {
+        kind: "qara-internal",
+        summary: analysis.aiAnalysis.summary,
+      },
+      analysis,
+      analysis.finalDecision,
+    );
+  }
+
+  finish(
+    options,
+    {
+      kind: "product",
+      result: analysis,
+      services: analysis.services,
+      affectedAreas: analysis.affectedAreas,
+      existingTests: analysis.existingTests,
+    },
+    analysis,
+    analysis.finalDecision,
+  );
+} catch (error) {
+  const message =
+    error instanceof Error ? error.message : String(error);
+
+  if (options.noFail) {
+    finish(options, { kind: "error", message });
+  }
+
+  throw error;
+}

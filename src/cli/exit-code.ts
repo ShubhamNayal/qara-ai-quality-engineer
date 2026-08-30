@@ -2,7 +2,12 @@ import type { RiskDecision } from "../analysis/risk-decision.js";
 
 export function getExitCode(
   decision: RiskDecision,
+  noFail = false,
 ): number {
+  if (noFail) {
+    return 0;
+  }
+
   switch (decision) {
     case "ROUTINE_TESTING":
       return 0;

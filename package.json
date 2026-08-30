@@ -11,7 +11,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "AI quality engineer that comments on product PRs with affected services, areas, and additional tests to add",
   "devDependencies": {
     "@types/node": "^26.4.0",
     "typescript": "^7.0.2",

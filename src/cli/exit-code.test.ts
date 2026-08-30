@@ -20,4 +20,11 @@ describe("CLI Exit Code", () => {
       getExitCode("MUST_TEST_BEFORE_RELEASE"),
     ).toBe(1);
   });
+
+  it("returns 0 for every decision in comment-bot mode", () => {
+    expect(getExitCode("MUST_TEST", true)).toBe(0);
+    expect(
+      getExitCode("MUST_TEST_BEFORE_RELEASE", true),
+    ).toBe(0);
+  });
 });

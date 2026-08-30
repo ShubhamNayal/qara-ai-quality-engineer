@@ -1,18 +1,32 @@
 import { anthropic } from "../ai/client.js";
 import { buildQAAnalysisPrompt } from "../ai/prompts.js";
 import { parseAIAnalysis } from "../ai/parser.js";
+import type { ExistingTest } from "../input/existing-tests.js";
 
+import { detectAffectedAreas } from "./affected-areas.js";
 import { evaluateAnalysis } from "./evaluator.js";
 import { buildFinalResult } from "./final-result.js";
 import { checkRiskConsistency } from "./risk-consistency.js";
 import { assessRisk } from "./risk-assessor.js";
+import { detectServices } from "../input/service-detector.js";
 
-export async function analyzeChange(change: string) {
+export interface AnalyzeChangeOptions {
+  files?: string[];
+  existingTests?: ExistingTest[];
+}
+
+export async function analyzeChange(
+  change: string,
+  options: AnalyzeChangeOptions = {},
+) {
+  const files = options.files ?? [];
+  const existingTests = options.existingTests ?? [];
   const riskAssessment = assessRisk(change);
 
   const prompt = buildQAAnalysisPrompt(
     change,
     riskAssessment,
+    existingTests,
   );
 
   const response = await anthropic.messages.create({
@@ -53,5 +67,12 @@ export async function analyzeChange(change: string) {
     aiAnalysis,
     consistency,
     evaluation,
+    {
+      services: detectServices(files),
+      affectedAreas: detectAffectedAreas(
+        riskAssessment.classification,
+      ),
+      existingTests,
+    },
   );
 }

@@ -1,8 +1,15 @@
 import type { AIAnalysis } from "../ai/types.js";
+import type { ExistingTest } from "../input/existing-tests.js";
 import type { RiskAssessment } from "./risk-assessor.js";
 import type { RiskConsistencyResult } from "./risk-consistency.js";
 import type { EvaluationResult } from "./evaluator.js";
 import type { RiskDecision } from "./risk-decision.js";
+
+export interface ProductContext {
+  services: string[];
+  affectedAreas: string[];
+  existingTests: ExistingTest[];
+}
 
 export interface QARAResult {
   riskAssessment: RiskAssessment;
@@ -10,6 +17,9 @@ export interface QARAResult {
   consistency: RiskConsistencyResult;
   evaluation: EvaluationResult;
   finalDecision: RiskDecision;
+  services: string[];
+  affectedAreas: string[];
+  existingTests: ExistingTest[];
 }
 
 export function buildFinalResult(
@@ -17,6 +27,11 @@ export function buildFinalResult(
   aiAnalysis: AIAnalysis,
   consistency: RiskConsistencyResult,
   evaluation: EvaluationResult,
+  productContext: ProductContext = {
+    services: [],
+    affectedAreas: [],
+    existingTests: [],
+  },
 ): QARAResult {
   let finalDecision = riskAssessment.decision;
 
@@ -48,5 +63,8 @@ export function buildFinalResult(
     consistency,
     evaluation,
     finalDecision,
+    services: productContext.services,
+    affectedAreas: productContext.affectedAreas,
+    existingTests: productContext.existingTests,
   };
 }
