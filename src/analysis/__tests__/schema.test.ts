@@ -4,7 +4,9 @@ import { qaAnalysisSchema } from "../schema.js";
 describe("Qa analysis schema", () => {
 it("accepts a valid qa analysis", () => {
 const analysis = {
-riskLevel: "HIGH",
+isQaraChange: false,
+
+  riskLevel: "HIGH",
 
   summary:
     "Bulk contact import introduces data integrity and authorization risks.",
@@ -40,11 +42,14 @@ const result = qaAnalysisSchema.safeParse(analysis);
 
 expect(result.success).toBe(true);
 
+
 });
 
 it("rejects an invalid risk level", () => {
 const analysis = {
-riskLevel: "SUPER_HIGH",
+isQaraChange: false,
+
+  riskLevel: "SUPER_HIGH",
 
   summary: "Something is risky.",
 
@@ -61,7 +66,10 @@ expect(result.success).toBe(false);
 
 it("rejects an analysis with no summary", () => {
 const analysis = {
-riskLevel: "HIGH",
+isQaraChange: false,
+
+
+  riskLevel: "HIGH",
 
   risks: [],
 
@@ -72,11 +80,15 @@ const result = qaAnalysisSchema.safeParse(analysis);
 
 expect(result.success).toBe(false);
 
+
 });
 
 it("rejects a risk with an invalid severity", () => {
 const analysis = {
-riskLevel: "HIGH",
+isQaraChange: false,
+
+
+  riskLevel: "HIGH",
 
   summary: "Potential issue detected.",
 
@@ -99,7 +111,9 @@ expect(result.success).toBe(false);
 
 it("rejects more than 5 risks", () => {
 const analysis = {
-riskLevel: "HIGH",
+isQaraChange: false,
+
+  riskLevel: "HIGH",
 
   summary: "Multiple risks detected.",
 
@@ -120,7 +134,9 @@ expect(result.success).toBe(false);
 
 it("rejects more than 8 recommended tests", () => {
 const analysis = {
-riskLevel: "HIGH",
+isQaraChange: false,
+
+  riskLevel: "HIGH",
 
   summary: "Multiple tests recommended.",
 

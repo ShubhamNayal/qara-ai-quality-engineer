@@ -6,11 +6,43 @@ import { extractChange } from "./input/change-extractor.js";
 import { formatChangeForAnalysis } from "./input/change-formatter.js";
 import { getExitCode } from "./cli/exit-code.js";
 import { parseArgs } from "./cli/args.js";
+import { stripComments } from "./analysis/code-sanitizer.js";
 
 const options = parseArgs(process.argv.slice(2));
 
 const diff = await getGitDiff(options.base);
 const extractedChange = extractChange(diff);
+
+const meaningfulAddedLines = stripComments(
+  extractedChange.addedLines.join("\n"),
+).trim();
+
+const meaningfulRemovedLines = stripComments(
+  extractedChange.removedLines.join("\n"),
+).trim();
+
+if (!meaningfulAddedLines && !meaningfulRemovedLines) {
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          status: "NO_MEANINGFUL_CHANGES",
+          message:
+            "No meaningful code changes detected. Comments-only changes do not require risk analysis.",
+        },
+        null,
+        2,
+      ),
+    );
+  } else {
+    console.log(
+      "No meaningful code changes detected. Comments-only changes do not require risk analysis.",
+    );
+  }
+
+  process.exit(0);
+}
+
 const change = formatChangeForAnalysis(extractedChange);
 
 if (!change) {
@@ -44,12 +76,15 @@ if (options.json) {
   );
 } else {
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
   console.log(
     `QARA — RELEASE RISK: ${analysis.riskAssessment.riskLevel}`,
   );
+
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
   console.log(`\nDecision: ${analysis.finalDecision}`);
+
   console.log(
     `Risk Score: ${analysis.riskAssessment.riskScore}/100`,
   );
@@ -91,7 +126,11 @@ if (options.json) {
         console.log(
           `\n${index + 1}. [${test.priority}] ${test.area}`,
         );
-        console.log(`   Scenario: ${test.scenario}`);
+
+        console.log(
+          `   Scenario: ${test.scenario}`,
+        );
+
         console.log(
           `   Expected: ${test.expectedBehavior}`,
         );
@@ -100,12 +139,15 @@ if (options.json) {
   }
 
   console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
   console.log(
     `Deterministic Risk: ${analysis.riskAssessment.riskLevel}`,
   );
+
   console.log(
     `AI Risk:            ${analysis.aiAnalysis.riskLevel}`,
   );
+
   console.log(
     `Consistency:        ${
       analysis.consistency.consistent
@@ -113,9 +155,11 @@ if (options.json) {
         : "FAIL"
     }`,
   );
+
   console.log(
     `Final Decision:     ${analysis.finalDecision}`,
   );
+
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 }
 
@@ -124,3 +168,4 @@ const exitCode = getExitCode(
 );
 
 process.exit(exitCode);
+

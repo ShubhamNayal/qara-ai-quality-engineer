@@ -1,8 +1,11 @@
+
 import {
   riskProfiles,
   type RiskCategory,
   type RiskProfile,
 } from "./risk-profile.js";
+
+import { stripComments } from "./code-sanitizer.js";
 
 export interface ClassificationResult {
   profiles: RiskProfile[];
@@ -41,9 +44,14 @@ function matchesBusinessKeyword(
 export function classifyChange(
   change: string,
 ): ClassificationResult {
+  // Remove comments before performing business-risk classification.
+  // This prevents words such as "payment", "refund", or "migration"
+  // inside comments from triggering a risk profile.
+  const code = stripComments(change);
+
   const profiles = riskProfiles.filter((profile) =>
     profile.keywords.some((keyword) =>
-      matchesBusinessKeyword(change, keyword),
+      matchesBusinessKeyword(code, keyword),
     ),
   );
 
@@ -71,3 +79,4 @@ export function classifyChange(
     riskScore,
   };
 }
+
